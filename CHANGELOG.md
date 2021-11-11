@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `PyType::is_subclass_of` and `PyAny::is_instance_of` which operate not on
+  a type known at compile-time but a run-time type object. [#1985](https://github.com/PyO3/pyo3/pull/1985)
+
 ### Changed
 
 - `#[classattr]` constants with a known magic method name (which is lowercase) no longer trigger lint warnings expecting constants to be uppercase. [#1969](https://github.com/PyO3/pyo3/pull/1969)
@@ -15,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix creating `#[classattr]` by functions with the name of a known magic method. [#1969](https://github.com/PyO3/pyo3/pull/1969)
+
+### Removed
+
+- Remove `PyType::is_instance`, which is unintuitive; instead of `typ.is_instance(obj)`, you should
+  now use `obj.is_instance_of(typ)`. [#1985](https://github.com/PyO3/pyo3/pull/1985)
 
 ## [0.15.0] - 2021-11-03
 
