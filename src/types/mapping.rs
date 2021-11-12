@@ -159,7 +159,7 @@ mod tests {
             assert!(mapping
                 .get_item(8i32)
                 .unwrap_err()
-                .is_instance::<PyKeyError>(py));
+                .is_instance_of::<PyKeyError>(py));
         });
     }
 
@@ -195,7 +195,7 @@ mod tests {
             assert!(mapping
                 .get_item(7i32)
                 .unwrap_err()
-                .is_instance::<PyKeyError>(py));
+                .is_instance_of::<PyKeyError>(py));
         });
     }
 
