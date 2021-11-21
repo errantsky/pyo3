@@ -622,6 +622,9 @@ pub trait PyClassInventory: inventory::Collect {
 // Methods from #[pyo3(get, set)] on struct fields.
 methods_trait!(PyClassDescriptors, py_class_descriptors);
 
+// Methods that PyO3 implemented by default, but can be overridden by the user.
+methods_trait!(PyClassDefaultImpls, py_class_default_impls);
+
 // Methods from #[pymethods] if not using inventory.
 #[cfg(not(feature = "multiple-pymethods"))]
 methods_trait!(PyMethods, py_methods);
@@ -656,6 +659,9 @@ slots_trait!(PyNumberProtocolSlots, number_protocol_slots);
 slots_trait!(PyAsyncProtocolSlots, async_protocol_slots);
 slots_trait!(PySequenceProtocolSlots, sequence_protocol_slots);
 slots_trait!(PyBufferProtocolSlots, buffer_protocol_slots);
+
+// slots that PyO3 implements by default, but can be overidden by the users.
+slots_trait!(PyClassDefaultSlots, py_class_default_slots);
 
 // Protocol slots from #[pymethods] if not using inventory.
 #[cfg(not(feature = "multiple-pymethods"))]
