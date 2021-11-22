@@ -737,9 +737,6 @@ impl<'a> PyClassImplsBuilder<'a> {
                     visitor(collector.descr_protocol_methods());
                     visitor(collector.mapping_protocol_methods());
                     visitor(collector.number_protocol_methods());
-
-                    // It's collected last so Python ignore them if it found methods with same names.
-                    visitor(collector.py_class_default_impls());
                 }
                 fn get_new() -> ::std::option::Option<::pyo3::ffi::newfunc> {
                     use ::pyo3::class::impl_::*;
@@ -761,6 +758,8 @@ impl<'a> PyClassImplsBuilder<'a> {
                     // Implementation which uses dtolnay specialization to load all slots.
                     use ::pyo3::class::impl_::*;
                     let collector = PyClassImplCollector::<Self>::new();
+                    // This depends on Python implementation detail;
+                    // an old slot entry will be overriden by newer ones.
                     visitor(collector.py_class_default_slots());
                     visitor(collector.object_protocol_slots());
                     visitor(collector.number_protocol_slots());
