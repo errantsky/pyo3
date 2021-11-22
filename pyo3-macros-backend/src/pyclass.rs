@@ -444,7 +444,29 @@ fn impl_enum_class(
         }
     };
 
-    let default_impls = gen_default_slot_impls(cls, vec![default_repr_impl]);
+    let default_richcmp = {
+        let variants_eq = variants.iter().map(|variant| {
+            let variant_name = variant.ident;
+            quote! {(#cls::#variant_name, #cls::#variant_name) => true.to_object(py),}
+        });
+        quote! {
+            #[allow(non_snake_case)]
+            #[pyo3(name = "__richcmp__")]
+            fn __pyo3__richcmp__(&self, py: ::pyo3::Python, other: &Self, op: ::pyo3::basic::CompareOp) -> PyObject {
+                match op {
+                    ::pyo3::basic::CompareOp::Eq => {
+                        match (self, other) {
+                            #(#variants_eq)*
+                            _ => py.NotImplemented(),
+                        }
+                    }
+                    _ => py.NotImplemented(),
+                }
+            }
+        }
+    };
+
+    let default_impls = gen_default_slot_impls(cls, vec![default_repr_impl, default_richcmp]);
     Ok(quote! {
 
         #pytypeinfo

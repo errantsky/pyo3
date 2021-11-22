@@ -12,12 +12,11 @@ pub enum MyEnum {
 
 #[test]
 fn test_enum_class_attr() {
-    let gil = Python::acquire_gil();
-    let py = gil.python();
-    let my_enum = py.get_type::<MyEnum>();
-    py_assert!(py, my_enum, "getattr(my_enum, 'Variant', None) is not None");
-    py_assert!(py, my_enum, "getattr(my_enum, 'foobar', None) is None");
-    py_run!(py, my_enum, "my_enum.Variant = None");
+    Python::with_gil(|py| {
+        let my_enum = py.get_type::<MyEnum>();
+        let var = Py::new(py, MyEnum::Variant).unwrap();
+        py_assert!(py, my_enum var, "my_enum.Variant == var");
+    })
 }
 
 #[pyfunction]
@@ -26,7 +25,6 @@ fn return_enum() -> MyEnum {
 }
 
 #[test]
-#[ignore] // need to implement __eq__
 fn test_return_enum() {
     let gil = Python::acquire_gil();
     let py = gil.python();
@@ -42,14 +40,24 @@ fn enum_arg(e: MyEnum) {
 }
 
 #[test]
-#[ignore] // need to implement __eq__
 fn test_enum_arg() {
-    let gil = Python::acquire_gil();
-    let py = gil.python();
-    let f = wrap_pyfunction!(enum_arg)(py).unwrap();
-    let mynum = py.get_type::<MyEnum>();
+    Python::with_gil(|py| {
+        let f = wrap_pyfunction!(enum_arg)(py).unwrap();
+        let mynum = py.get_type::<MyEnum>();
 
-    py_run!(py, f mynum, "f(mynum.Variant)")
+        py_run!(py, f mynum, "f(mynum.OtherVariant)")
+    })
+}
+
+#[test]
+fn test_enum_eq() {
+    Python::with_gil(|py| {
+        let var1 = Py::new(py, MyEnum::Variant).unwrap();
+        let var2 = Py::new(py, MyEnum::Variant).unwrap();
+        let other_var = Py::new(py, MyEnum::OtherVariant).unwrap();
+        py_assert!(py, var1 var2, "var1 == var2");
+        py_assert!(py, var1 other_var, "var1 != other_var");
+    })
 }
 
 #[test]
