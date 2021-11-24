@@ -159,7 +159,7 @@ pub fn gen_default_slot_impls(cls: &syn::Ident, method_defs: Vec<TokenStream>) -
                 proto_impls.push(quote!(#(#attrs)* #token_stream))
             }
             GeneratedPyMethod::SlotTraitImpl(..) => {
-                todo!()
+                panic!("SlotFragment methods cannot have default implementation!")
             }
             GeneratedPyMethod::Method(_) | GeneratedPyMethod::TraitImpl(_) => {
                 panic!("Only protocol methods can have default implementation!")
