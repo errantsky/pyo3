@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `Py::setattr` method. [#2009](https://github.com/PyO3/pyo3/pull/2009)
 - Add `PyCapsule`, exposing the [Capsule API](https://docs.python.org/3/c-api/capsule.html#capsules). [#1980](https://github.com/PyO3/pyo3/pull/1980)
 - Add a mechanism for PyO3 to generate default definition of magic methods. [#2014](https://github.com/PyO3/pyo3/pull/2014)
+- `#[pyclass]` now supports fieldless enums. They also provide default implementation for `__repr__`, `__int__`, and `__richcmp__`.
 
 ### Changed
 
