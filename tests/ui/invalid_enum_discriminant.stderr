@@ -1,0 +1,13 @@
+error[E0080]: evaluation of constant value failed
+ --> tests/ui/invalid_enum_discriminant.rs:9:11
+  |
+9 |     Var = 1 << 64,
+  |           ^^^^^^^ attempt to shift left by `64_i32`, which would overflow
+
+error[E0370]: enum discriminant overflowed
+  --> tests/ui/invalid_enum_discriminant.rs:15:5
+   |
+15 |     Overflow,
+   |     ^^^^^^^^ overflowed on value after 9223372036854775807
+   |
+   = note: explicitly set `Overflow = -9223372036854775808` if that is desired outcome

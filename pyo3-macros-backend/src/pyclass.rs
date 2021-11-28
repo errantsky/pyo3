@@ -381,6 +381,68 @@ struct PyClassEnumVariant<'a> {
     /* currently have no more options */
 }
 
+struct PyClassEnum<'a> {
+    ident: &'a syn::Ident,
+    // The underyling representation of the enum.
+    // It's used to implement __int__ and __richcmp__.
+    // This matters when the underyling representation may not fit in `isize`.
+    #[allow(unused, dead_code)]
+    repr: syn::Ident,
+    variants: Vec<PyClassEnumVariant<'a>>,
+    doc: PythonDoc,
+}
+
+impl<'a> PyClassEnum<'a> {
+    fn new(enum_: &'a syn::ItemEnum) -> syn::Result<Self> {
+        fn is_numeric_type(t: &syn::Ident) -> bool {
+            match t.to_string().as_str() {
+                "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "u128" | "i128"
+                | "usize" | "isize" => true,
+                _ => false,
+            }
+        }
+        struct Reprs(syn::punctuated::Punctuated<syn::Ident, Token![,]>);
+        impl Parse for Reprs {
+            fn parse(input: ParseStream) -> Result<Self> {
+                let inner = Punctuated::parse_terminated(input)?;
+                Ok(Self(inner))
+            }
+        }
+        let ident = &enum_.ident;
+        // According to the [reference](https://doc.rust-lang.org/reference/items/enumerations.html),
+        // "Under the default representation, the specified discriminant is interpreted as an isize
+        // value", so `isize` should be enough by default.
+        // `cargo test` also tests the following facts:
+        // - Rustc emits a compile error when the user use a discriminant larger than `isize`.
+        // - Rustc emits a compile error when the default discriminant is larger than `isize`.
+        let mut repr = syn::Ident::new("isize", proc_macro2::Span::call_site());
+        for attr in &enum_.attrs {
+            if attr.path.is_ident("repr") {
+                let reprs: Reprs = attr.parse_args()?;
+                for r in reprs.0 {
+                    if is_numeric_type(&r) {
+                        repr = r;
+                        break;
+                    }
+                }
+            }
+        }
+        let doc = utils::get_doc(&enum_.attrs, None);
+
+        let variants = enum_
+            .variants
+            .iter()
+            .map(extract_variant_data)
+            .collect::<syn::Result<_>>()?;
+        Ok(Self {
+            ident,
+            repr,
+            variants,
+            doc,
+        })
+    }
+}
+
 pub fn build_py_enum(
     enum_: &syn::ItemEnum,
     args: PyClassArgs,
@@ -389,23 +451,16 @@ pub fn build_py_enum(
     if enum_.variants.is_empty() {
         bail_spanned!(enum_.brace_token.span => "Empty enums can't be #[pyclass].");
     }
-    let variants: Vec<PyClassEnumVariant> = enum_
-        .variants
-        .iter()
-        .map(extract_variant_data)
-        .collect::<syn::Result<_>>()?;
-    impl_enum(enum_, args, variants, method_type)
+    let enum_ = PyClassEnum::new(&enum_)?;
+    impl_enum(enum_, args, method_type)
 }
 
 fn impl_enum(
-    enum_: &syn::ItemEnum,
-    attrs: PyClassArgs,
-    variants: Vec<PyClassEnumVariant>,
+    enum_: PyClassEnum,
+    args: PyClassArgs,
     methods_type: PyClassMethodsType,
 ) -> syn::Result<TokenStream> {
-    let enum_name = &enum_.ident;
-    let doc = utils::get_doc(&enum_.attrs, None);
-    let enum_cls = impl_enum_class(enum_name, &attrs, variants, doc, methods_type)?;
+    let enum_cls = impl_enum_class(enum_, &args, methods_type)?;
 
     Ok(quote! {
         #enum_cls
@@ -413,14 +468,15 @@ fn impl_enum(
 }
 
 fn impl_enum_class(
-    cls: &syn::Ident,
-    attr: &PyClassArgs,
-    variants: Vec<PyClassEnumVariant>,
-    doc: PythonDoc,
+    enum_: PyClassEnum,
+    args: &PyClassArgs,
     methods_type: PyClassMethodsType,
 ) -> syn::Result<TokenStream> {
-    let pytypeinfo = impl_pytypeinfo(cls, attr, None);
-    let pyclass_impls = PyClassImplsBuilder::new(cls, attr, methods_type)
+    let cls = enum_.ident;
+    let doc = enum_.doc;
+    let variants = enum_.variants;
+    let pytypeinfo = impl_pytypeinfo(cls, args, None);
+    let pyclass_impls = PyClassImplsBuilder::new(cls, args, methods_type)
         .doc(doc)
         .impl_all();
     let descriptors = unit_variants_as_descriptors(cls, variants.iter().map(|v| v.ident));
