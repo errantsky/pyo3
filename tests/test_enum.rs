@@ -69,3 +69,24 @@ fn test_default_repr_correct() {
         py_assert!(py, var2, "repr(var2) == 'MyEnum.OtherVariant'");
     })
 }
+
+#[pyclass]
+enum CustomDiscriminant {
+    One = 1,
+    Two = 2,
+}
+
+#[test]
+fn test_custom_discriminant() {
+    Python::with_gil(|py| {
+        #[allow(non_snake_case)]
+        let CustomDiscriminant = py.get_type::<CustomDiscriminant>();
+        let one = Py::new(py, CustomDiscriminant::One).unwrap();
+        let two = Py::new(py, CustomDiscriminant::Two).unwrap();
+        py_run!(py, CustomDiscriminant one two, r#"
+        assert CustomDiscriminant.One == one
+        assert CustomDiscriminant.Two == two
+        assert one != two
+        "#);
+    })
+}

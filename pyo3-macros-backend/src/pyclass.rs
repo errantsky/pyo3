@@ -515,9 +515,6 @@ fn extract_variant_data(variant: &syn::Variant) -> syn::Result<PyClassEnumVarian
         Fields::Unit => &variant.ident,
         _ => bail_spanned!(variant.span() => "Currently only support unit variants."),
     };
-    if let Some(discriminant) = variant.discriminant.as_ref() {
-        bail_spanned!(discriminant.0.span() => "Currently does not support discriminats.")
-    };
     Ok(PyClassEnumVariant { ident })
 }
 
