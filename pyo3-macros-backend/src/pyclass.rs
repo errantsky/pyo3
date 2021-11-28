@@ -395,11 +395,12 @@ struct PyClassEnum<'a> {
 impl<'a> PyClassEnum<'a> {
     fn new(enum_: &'a syn::ItemEnum) -> syn::Result<Self> {
         fn is_numeric_type(t: &syn::Ident) -> bool {
-            match t.to_string().as_str() {
-                "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "u128" | "i128"
-                | "usize" | "isize" => true,
-                _ => false,
-            }
+            [
+                "u8", "i8", "u16", "i16", "u32", "i32", "u64", "i64", "u128", "i128", "usize",
+                "isize",
+            ]
+            .iter()
+            .any(|&s| t == s)
         }
         struct Reprs(syn::punctuated::Punctuated<syn::Ident, Token![,]>);
         impl Parse for Reprs {
@@ -500,29 +501,56 @@ fn impl_enum_class(
         }
     };
 
-    let default_richcmp = {
-        let variants_eq = variants.iter().map(|variant| {
+    let repr_type = &enum_.repr;
+
+    let default_int = {
+        // This implementation allows us to convert &T to #repr_type without implementing `Copy`
+        let variants_to_int = variants.iter().map(|variant| {
             let variant_name = variant.ident;
-            quote! {(#cls::#variant_name, #cls::#variant_name) => true.to_object(py),}
+            quote! { #cls::#variant_name => #cls::#variant_name as #repr_type, }
         });
         quote! {
             #[allow(non_snake_case)]
-            #[pyo3(name = "__richcmp__")]
-            fn __pyo3__richcmp__(&self, py: ::pyo3::Python, other: &Self, op: ::pyo3::basic::CompareOp) -> PyObject {
-                match op {
-                    ::pyo3::basic::CompareOp::Eq => {
-                        match (self, other) {
-                            #(#variants_eq)*
-                            _ => py.NotImplemented(),
-                        }
-                    }
-                    _ => py.NotImplemented(),
+            #[pyo3(name = "__int__")]
+            fn __pyo3__int__(&self) -> #repr_type {
+                match self {
+                    #(#variants_to_int)*
                 }
             }
         }
     };
 
-    let default_impls = gen_default_slot_impls(cls, vec![default_repr_impl, default_richcmp]);
+    let default_richcmp = {
+        let variants_eq = variants.iter().map(|variant| {
+            let variant_name = variant.ident;
+            quote! {(#cls::#variant_name, #cls::#variant_name) => Ok(true.to_object(py)),}
+        });
+        quote! {
+            #[allow(non_snake_case)]
+            #[pyo3(name = "__richcmp__")]
+            fn __pyo3__richcmp__(&self, py: ::pyo3::Python, other: &PyAny, op: ::pyo3::basic::CompareOp) -> PyResult<PyObject> {
+                match op {
+                    ::pyo3::basic::CompareOp::Eq => {
+                        if let Ok(i) = other.extract::<#repr_type>() {
+                            let self_val = self.__pyo3__int__();
+                            return Ok((self_val == i).to_object(py));
+                        }
+                        let other = other.extract::<PyRef<Self>>()?;
+                        let other = &*other;
+                        match (self, other) {
+                            #(#variants_eq)*
+                            _ => Ok(py.NotImplemented()),
+                        }
+                    }
+                    _ => Ok(py.NotImplemented()),
+                }
+            }
+        }
+    };
+
+    let default_impls =
+        gen_default_slot_impls(cls, vec![default_repr_impl, default_richcmp, default_int]);
+
     Ok(quote! {
 
         #pytypeinfo

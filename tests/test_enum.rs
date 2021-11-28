@@ -90,3 +90,59 @@ fn test_custom_discriminant() {
         "#);
     })
 }
+
+#[test]
+fn test_enum_to_int() {
+    Python::with_gil(|py| {
+        let one = Py::new(py, CustomDiscriminant::One).unwrap();
+        py_assert!(py, one, "int(one) == 1");
+        let test_noexception = Py::new(py, MyEnum::Variant).unwrap();
+        py_run!(py, test_noexception, "int(test_noexception)");
+    })
+}
+
+#[test]
+fn test_enum_compare_int() {
+    Python::with_gil(|py| {
+        let one = Py::new(py, CustomDiscriminant::One).unwrap();
+        py_run!(
+            py,
+            one,
+            r#"
+            assert one == 1
+            assert 1 == one
+            assert one != 2
+        "#
+        )
+    })
+}
+
+#[pyclass]
+#[repr(u8)]
+enum SmallEnum {
+    V = 1,
+}
+
+#[test]
+fn test_enum_compare_int_no_throw_when_overflow() {
+    Python::with_gil(|py| {
+        let v = Py::new(py, SmallEnum::V).unwrap();
+        py_assert!(py, v, "v != 1<<30")
+    })
+}
+
+#[pyclass]
+#[repr(usize)]
+enum BigEnum {
+    V = usize::MAX,
+}
+
+#[test]
+fn test_big_enum_no_overflow() {
+    Python::with_gil(|py| {
+        let usize_max = usize::MAX;
+        let v = Py::new(py, BigEnum::V).unwrap();
+        py_assert!(py, usize_max v, "v == usize_max");
+        py_assert!(py, usize_max v, "int(v) == usize_max");
+    })
+}
