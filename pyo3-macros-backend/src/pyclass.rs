@@ -425,23 +425,25 @@ fn impl_enum_class(
         .impl_all();
     let descriptors = unit_variants_as_descriptors(cls, variants.iter().map(|v| v.ident));
 
-    let variants_repr = variants.iter().map(|variant| {
-        let variant_name = variant.ident;
-        // Assuming all variants are unit variants because they are the only type we support.
-        let repr = format!("{}.{}", cls, variant_name);
-        quote! { #cls::#variant_name => #repr, }
-    });
-
-    let default_repr_impl = quote! {
-        #[allow(non_snake_case)]
-        #[pyo3(name = "__repr__")]
-        fn __pyo3__repr__(&self) -> &'static str {
-            match self {
-                #(#variants_repr)*
-                _ => unreachable!("Unsupported variant type."),
+    let default_repr_impl = {
+        let variants_repr = variants.iter().map(|variant| {
+            let variant_name = variant.ident;
+            // Assuming all variants are unit variants because they are the only type we support.
+            let repr = format!("{}.{}", cls, variant_name);
+            quote! { #cls::#variant_name => #repr, }
+        });
+        quote! {
+            #[allow(non_snake_case)]
+            #[pyo3(name = "__repr__")]
+            fn __pyo3__repr__(&self) -> &'static str {
+                match self {
+                    #(#variants_repr)*
+                    _ => unreachable!("Unsupported variant type."),
+                }
             }
         }
     };
+
     let default_impls = gen_default_slot_impls(cls, vec![default_repr_impl]);
     Ok(quote! {
 
