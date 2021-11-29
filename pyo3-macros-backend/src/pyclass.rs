@@ -386,7 +386,6 @@ struct PyClassEnum<'a> {
     // The underyling representation of the enum.
     // It's used to implement __int__ and __richcmp__.
     // This matters when the underyling representation may not fit in `isize`.
-    #[allow(unused, dead_code)]
     repr: syn::Ident,
     variants: Vec<PyClassEnumVariant<'a>>,
     doc: PythonDoc,
